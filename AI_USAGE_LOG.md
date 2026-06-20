@@ -197,4 +197,30 @@ VisitsController için IVisitService injection yaptı — doğru. UsersControlle
 
 ---
 
+### [LOG-03] | 20.06.2026 | Claude (chat) | Aşama 3 — SQL Sorguları
+
+**Görev:** 4 adet PostgreSQL sorgusu yazmak (`sql/queries.sql`).
+
+**Prompt:**
+Field Visits uygulaması için PostgreSQL sorguları yaz:
+1. En çok ziyaret gerçekleştiren ilk 5 kullanıcı
+2. Son 30 gün içinde hiç ziyaret yapmayan kullanıcılar
+3. Kullanıcı bazlı ziyaret raporu (toplam ziyaret, son ziyaret tarihi)
+4. Merkez tarafından onaylanmamış ziyaretler
+
+**AI Önerisi:**
+Claude dört sorguyu tamamladı. Soru 2 için hem `NOT IN` + subquery hem de `LEFT JOIN` + `WHERE v."Id" IS NULL` alternatifini sundu; büyük veri setlerinde `LEFT JOIN` yaklaşımının daha performanslı olabileceğini belirtti.
+
+**Kullandım mı?** Kısmen
+
+**Gerekçe:**
+- **Soru 1 — INNER JOIN:** Hiç ziyareti olmayan kullanıcıyı listeye almak anlamsız; `LEFT JOIN` olsaydı 0 ziyaretli kullanıcılar da gelirdi. `INNER JOIN` + `GROUP BY` + `ORDER BY COUNT DESC LIMIT 5` kabul edildi.
+- **Soru 2 — NOT IN:** Okunabilirlik önceliğiyle `NOT IN` + subquery versiyonu seçildi. AI'ın önerdiği `LEFT JOIN` + `WHERE v."Id" IS NULL` alternatifi kullanılmadı; büyük tablolarda performans avantajı olabileceği bilinçli trade-off olarak not edildi.
+- **Soru 3 — LEFT JOIN:** Tüm kullanıcıları (ziyareti olmayanlar dahil) raporlamak için `LEFT JOIN` + `GROUP BY` uygun.
+- **Soru 4 — Status = 'Pending':** Pending olanlar "henüz karar verilmemiş" demek; Rejected olanlar da "onaylanmamış" sayılabilir. Test case'in ruhuna göre `Pending` daha doğru — değerlendirmeciye farklı yorumlanabilirlik için sorguya comment eklendi.
+
+**Sonuç:** 4 sorgu `sql/queries.sql` dosyasına eklendi.
+
+---
+
 > **Not:** Bu log, proje boyunca her AI etkileşiminde güncellenecektir.

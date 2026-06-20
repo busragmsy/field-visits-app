@@ -49,4 +49,11 @@ public class VisitsController : ControllerBase
         var visit = await _visitService.ApproveOrRejectVisitAsync(id, request);
         return Ok(visit);
     }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteVisit(int id)
+    {
+        await _visitService.DeleteVisitAsync(id);
+        return NoContent();
+    }
 }

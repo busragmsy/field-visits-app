@@ -9,4 +9,5 @@ public interface IVisitService
     Task<VisitResponse> UpdateVisitAsync(int visitId, UpdateVisitRequest request);
     Task<List<VisitResponse>> GetAllVisitsAsync();
     Task<VisitResponse> ApproveOrRejectVisitAsync(int visitId, ApproveVisitRequest request);
+    Task DeleteVisitAsync(int visitId);
 }

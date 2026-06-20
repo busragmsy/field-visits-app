@@ -108,6 +108,24 @@ public class VisitService : IVisitService
         return MapToResponse(visit);
     }
 
+    public async Task DeleteVisitAsync(int visitId)
+    {
+        var visit = await _context.Visits.FindAsync(visitId);
+
+        if (visit is null)
+        {
+            throw new Exception("Ziyaret bulunamadı.");
+        }
+
+        if (visit.Status == VisitStatus.Approved)
+        {
+            throw new Exception("Onaylanmış ziyaret silinemez.");
+        }
+
+        _context.Visits.Remove(visit);
+        await _context.SaveChangesAsync();
+    }
+
     private static void ValidateVisitData(DateOnly visitDate, string customerName, string? note)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

@@ -7,7 +7,7 @@ README'deki AI Usage Report bu dosyadan derlenecektir.
 
 ## KAYITLAR
 
-### [LOG-01] | 20 Haziran 2026 | Antigravity IDE | Aşama 1 — Scaffold ve Veritabanı Kurulumu
+### [LOG-01] | 20.06.2026 | Antigravity IDE | Aşama 1 — Scaffold ve Veritabanı Kurulumu
 
 **Görev:** .NET 9 WebAPI projesinin temel iskeletini, entity'leri, DbContext'i ve Docker ortamını oluşturmak. Ardından yerel NuGet hatasını otonom olarak çözmek.
 

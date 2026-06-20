@@ -121,3 +121,4 @@ C:\Users\BUSRA\Documents\field-visits-app\FieldVisits.API\obj\Debug\net9.0\refin
 C:\Users\BUSRA\Documents\field-visits-app\FieldVisits.API\obj\Debug\net9.0\FieldVisits.API.pdb
 C:\Users\BUSRA\Documents\field-visits-app\FieldVisits.API\obj\Debug\net9.0\FieldVisits.API.genruntimeconfig.cache
 C:\Users\BUSRA\Documents\field-visits-app\FieldVisits.API\obj\Debug\net9.0\ref\FieldVisits.API.dll
+C:\Users\BUSRA\Documents\field-visits-app\FieldVisits.API\obj\Debug\net9.0\FieldVisits.API.sourcelink.json

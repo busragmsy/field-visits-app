@@ -1,0 +1,20 @@
+namespace FieldVisits.API.Models.DTOs;
+
+public class VisitResponse
+{
+    public int Id { get; set; }
+
+    public int UserId { get; set; }
+
+    public string CustomerName { get; set; } = string.Empty;
+
+    public DateOnly VisitDate { get; set; }
+
+    public string? Note { get; set; }
+
+    public DateTime CreatedDate { get; set; }
+
+    public string Status { get; set; } = string.Empty;
+
+    public DateTime? ApprovedAt { get; set; }
+}

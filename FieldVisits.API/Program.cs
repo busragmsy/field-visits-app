@@ -1,4 +1,6 @@
 using FieldVisits.API.Data;
+using FieldVisits.API.Middleware;
+using FieldVisits.API.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 // ── Database ────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IVisitService, VisitService>();
 
 // ── CORS ────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -33,6 +37,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseAuthorization();
 

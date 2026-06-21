@@ -10,6 +10,8 @@ public class Visit
 
     public int UserId { get; set; }
 
+    public int? CustomerId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string CustomerName { get; set; } = string.Empty;
@@ -27,6 +29,13 @@ public class Visit
 
     public int? ApprovedBy { get; set; }
 
+    [MaxLength(500)]
+    public string? RejectReason { get; set; }
+
+    public DateTime? CheckInAt { get; set; }
+
+    public DateTime? CheckOutAt { get; set; }
+
     public double? Latitude { get; set; }
 
     public double? Longitude { get; set; }
@@ -37,4 +46,9 @@ public class Visit
     // Navigation property
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
+
+    [ForeignKey(nameof(CustomerId))]
+    public Customer? Customer { get; set; }
+
+    public ICollection<VisitStatusHistory> StatusHistories { get; set; } = new List<VisitStatusHistory>();
 }

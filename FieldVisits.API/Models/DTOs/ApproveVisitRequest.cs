@@ -8,4 +8,7 @@ public class ApproveVisitRequest
 
     [Required]
     public string Action { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? RejectReason { get; set; }
 }

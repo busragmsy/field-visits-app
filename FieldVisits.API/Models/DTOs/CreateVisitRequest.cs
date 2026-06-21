@@ -4,8 +4,6 @@ namespace FieldVisits.API.Models.DTOs;
 
 public class CreateVisitRequest
 {
-    public int UserId { get; set; }
-
     [Required]
     [MaxLength(200)]
     public string CustomerName { get; set; } = string.Empty;
@@ -21,4 +19,6 @@ public class CreateVisitRequest
 
     [MaxLength(500)]
     public string? Address { get; set; }
+
+    public bool CheckInNow { get; set; }
 }

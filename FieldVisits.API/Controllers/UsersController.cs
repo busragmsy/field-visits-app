@@ -1,11 +1,13 @@
 using FieldVisits.API.Data;
 using FieldVisits.API.Models.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace FieldVisits.API.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin")]
 [Route("api/users")]
 public class UsersController : ControllerBase
 {

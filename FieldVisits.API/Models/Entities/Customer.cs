@@ -1,9 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using FieldVisits.API.Models.Enums;
 
 namespace FieldVisits.API.Models.Entities;
 
-public class User
+public class Customer
 {
     public int Id { get; set; }
 
@@ -11,16 +10,16 @@ public class User
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(200)]
-    public string Email { get; set; } = string.Empty;
+    public string? ContactName { get; set; }
 
-    [Required]
-    [MaxLength(200)]
-    public string PasswordHash { get; set; } = string.Empty;
+    [MaxLength(50)]
+    public string? Phone { get; set; }
 
-    public Role Role { get; set; }
+    [MaxLength(500)]
+    public string? Address { get; set; }
 
-    // Navigation property
+    public DateTime CreatedDate { get; set; }
+
     public ICollection<Visit> Visits { get; set; } = new List<Visit>();
 }

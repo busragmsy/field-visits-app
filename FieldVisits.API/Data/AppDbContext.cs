@@ -12,7 +12,9 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Visit> Visits => Set<Visit>();
+    public DbSet<VisitStatusHistory> VisitStatusHistories => Set<VisitStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,20 +31,53 @@ public class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(200);
 
+            entity.HasIndex(u => u.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Email");
+
+            entity.Property(u => u.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(200);
+
             entity.Property(u => u.Role)
                 .HasConversion(new EnumToStringConverter<Role>())
                 .HasMaxLength(50);
 
             // Seed data: 1 merkez (Admin) + saha (Field) kullanıcıları.
             // Frontend USER_ID=1 saha kullanıcısı, onay/red işlemleri Admin ile yapılır.
+            const string defaultPasswordHash = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
             entity.HasData(
-                new User { Id = 1, Name = "Büşra", Email = "busra@test.com", Role = Role.Field },
-                new User { Id = 2, Name = "Admin", Email = "admin@test.com", Role = Role.Admin },
-                new User { Id = 3, Name = "Ayşe Demir", Email = "ayse.demir@test.com", Role = Role.Field },
-                new User { Id = 4, Name = "Mehmet Kaya", Email = "mehmet.kaya@test.com", Role = Role.Field },
-                new User { Id = 5, Name = "Fatma Şahin", Email = "fatma.sahin@test.com", Role = Role.Field },
-                new User { Id = 6, Name = "Ali Çelik", Email = "ali.celik@test.com", Role = Role.Field }
+                new User { Id = 1, Name = "Büşra", Email = "busra@test.com", PasswordHash = defaultPasswordHash, Role = Role.Field },
+                new User { Id = 2, Name = "Admin", Email = "admin@test.com", PasswordHash = defaultPasswordHash, Role = Role.Admin },
+                new User { Id = 3, Name = "Ayşe Demir", Email = "ayse.demir@test.com", PasswordHash = defaultPasswordHash, Role = Role.Field },
+                new User { Id = 4, Name = "Mehmet Kaya", Email = "mehmet.kaya@test.com", PasswordHash = defaultPasswordHash, Role = Role.Field },
+                new User { Id = 5, Name = "Fatma Şahin", Email = "fatma.sahin@test.com", PasswordHash = defaultPasswordHash, Role = Role.Field },
+                new User { Id = 6, Name = "Ali Çelik", Email = "ali.celik@test.com", PasswordHash = defaultPasswordHash, Role = Role.Field }
             );
+        });
+
+        // ── Customer configuration ──────────────────────────────────
+        modelBuilder.Entity<Customer>(entity =>
+        {
+            entity.Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.HasIndex(c => c.Name)
+                .IsUnique()
+                .HasDatabaseName("IX_Customers_Name");
+
+            entity.Property(c => c.ContactName)
+                .HasMaxLength(200);
+
+            entity.Property(c => c.Phone)
+                .HasMaxLength(50);
+
+            entity.Property(c => c.Address)
+                .HasMaxLength(500);
+
+            entity.Property(c => c.CreatedDate)
+                .HasDefaultValueSql("now() at time zone 'utc'");
         });
 
         // ── Visit configuration ─────────────────────────────────────
@@ -68,6 +103,9 @@ public class AppDbContext : DbContext
                 .HasConversion(new EnumToStringConverter<VisitStatus>())
                 .HasMaxLength(50);
 
+            entity.Property(v => v.RejectReason)
+                .HasMaxLength(500);
+
             // Aynı kullanıcı + müşteri + gün için tek ziyaret (Senaryo 1)
             entity.HasIndex(v => new { v.UserId, v.CustomerName, v.VisitDate })
                 .IsUnique()
@@ -78,6 +116,31 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Visits)
                 .HasForeignKey(v => v.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(v => v.Customer)
+                .WithMany(c => c.Visits)
+                .HasForeignKey(v => v.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── Visit status history configuration ─────────────────────
+        modelBuilder.Entity<VisitStatusHistory>(entity =>
+        {
+            entity.Property(h => h.OldStatus)
+                .HasConversion(new EnumToStringConverter<VisitStatus>())
+                .HasMaxLength(50);
+
+            entity.Property(h => h.NewStatus)
+                .HasConversion(new EnumToStringConverter<VisitStatus>())
+                .HasMaxLength(50);
+
+            entity.Property(h => h.Reason)
+                .HasMaxLength(500);
+
+            entity.HasOne(h => h.Visit)
+                .WithMany(v => v.StatusHistories)
+                .HasForeignKey(h => h.VisitId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

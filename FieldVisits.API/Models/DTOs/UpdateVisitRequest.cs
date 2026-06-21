@@ -20,8 +20,7 @@ public class UpdateVisitRequest
     [MaxLength(500)]
     public string? Address { get; set; }
 
-    /// <summary>
-    /// İşlemi yapan kullanıcı (reddedilmiş ziyaret düzenleme yetkisi için).
-    /// </summary>
-    public int? RequestedByUserId { get; set; }
+    public bool? CheckInNow { get; set; }
+
+    public bool? CheckOutNow { get; set; }
 }

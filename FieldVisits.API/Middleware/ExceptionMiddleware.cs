@@ -22,12 +22,20 @@ public class ExceptionMiddleware
         {
             context.Response.StatusCode = ex switch
             {
-                FieldVisits.API.Exceptions.NotFoundException => StatusCodes.Status404NotFound,
+                UnauthorizedException => StatusCodes.Status401Unauthorized,
+                ForbiddenException => StatusCodes.Status403Forbidden,
+                NotFoundException => StatusCodes.Status404NotFound,
+                ConflictException => StatusCodes.Status409Conflict,
+                ValidationException => StatusCodes.Status400BadRequest,
                 _ => StatusCodes.Status400BadRequest,
             };
             context.Response.ContentType = "application/json";
 
-            var response = JsonSerializer.Serialize(new { error = ex.Message });
+            var response = JsonSerializer.Serialize(new
+            {
+                error = ex.Message,
+                status = context.Response.StatusCode
+            });
             await context.Response.WriteAsync(response);
         }
     }

@@ -11,24 +11,30 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import CalendarIcon from '../components/CalendarIcon';
-import { approveOrRejectVisit, getVisitsByUser } from '../services/api';
+import { useUser } from '../context/UserContext';
+import {
+  approveOrRejectVisit,
+  getAllVisits,
+  getVisitsByUser,
+} from '../services/api';
 import { formatIsoToTurkish } from '../utils/date';
 import { getStatusConfig } from '../utils/status';
 
-const USER_ID = 1;
-const ADMIN_USER_ID = 2;
-
 export default function VisitListScreen({ navigation }) {
+  const { currentUser, setCurrentUser } = useUser();
+  const isAdmin = currentUser.role === 'Admin';
   const [visits, setVisits] = useState([]);
 
   const loadVisits = useCallback(async () => {
     try {
-      const data = await getVisitsByUser(USER_ID);
+      const data = isAdmin
+        ? await getAllVisits()
+        : await getVisitsByUser(currentUser.id);
       setVisits(data);
     } catch {
       setVisits([]);
     }
-  }, []);
+  }, [isAdmin, currentUser.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,7 +44,7 @@ export default function VisitListScreen({ navigation }) {
 
   const handleStatusChange = async (id, action) => {
     try {
-      await approveOrRejectVisit(id, { adminUserId: ADMIN_USER_ID, action });
+      await approveOrRejectVisit(id, { adminUserId: currentUser.id, action });
       await loadVisits();
     } catch (error) {
       if (Platform.OS === 'web') {
@@ -67,7 +73,7 @@ export default function VisitListScreen({ navigation }) {
           style={styles.cardMain}
           activeOpacity={0.7}
           onPress={() => navigation.navigate('EditVisit', { visit: item })}
-          onLongPress={() => showActionMenu(item)}
+          onLongPress={isAdmin ? () => showActionMenu(item) : undefined}
         >
           <View style={[styles.avatar, { backgroundColor: status.circle }]}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -95,7 +101,7 @@ export default function VisitListScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        {Platform.OS === 'web' && (
+        {Platform.OS === 'web' && isAdmin && (
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionButton, styles.approveButton]}
@@ -120,9 +126,22 @@ export default function VisitListScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerSide} />
-        <Text style={styles.headerTitle}>Ziyaretler</Text>
-        <View style={styles.headerSide}>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>
+            {isAdmin ? 'Tüm Ziyaretler' : 'Ziyaretlerim'}
+          </Text>
+          <Text style={styles.headerUser} numberOfLines={1}>
+            {currentUser.name} · {isAdmin ? 'Merkez' : 'Saha'}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.switchButton}
+            activeOpacity={0.8}
+            onPress={() => setCurrentUser(null)}
+          >
+            <Text style={styles.switchButtonText}>Değiştir</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.addButton}
             activeOpacity={0.8}
@@ -155,19 +174,40 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerSide: {
-    width: 44,
-    alignItems: 'flex-end',
+  headerInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
+  },
+  headerUser: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  switchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    marginRight: 8,
+  },
+  switchButtonText: {
+    color: '#2563EB',
+    fontWeight: '600',
+    fontSize: 13,
   },
   addButton: {
     width: 36,

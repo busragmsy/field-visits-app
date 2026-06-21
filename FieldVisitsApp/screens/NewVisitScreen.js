@@ -11,12 +11,13 @@ import {
   View,
 } from 'react-native';
 import DatePickerField from '../components/DatePickerField';
+import { useUser } from '../context/UserContext';
 import { createVisit } from '../services/api';
 
-const USER_ID = 1;
 const NOTE_MAX_LENGTH = 500;
 
 export default function NewVisitScreen({ navigation }) {
+  const { currentUser } = useUser();
   const [customerName, setCustomerName] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [note, setNote] = useState('');
@@ -36,7 +37,7 @@ export default function NewVisitScreen({ navigation }) {
     setSaving(true);
     try {
       await createVisit({
-        userId: USER_ID,
+        userId: currentUser.id,
         customerName: customerName.trim(),
         visitDate,
         note: note || null,

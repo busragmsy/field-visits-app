@@ -1,16 +1,23 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { UserProvider, useUser } from './context/UserContext';
 import EditVisitScreen from './screens/EditVisitScreen';
 import NewVisitScreen from './screens/NewVisitScreen';
+import UserSelectScreen from './screens/UserSelectScreen';
 import VisitListScreen from './screens/VisitListScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+function RootNavigator() {
+  const { currentUser } = useUser();
+
+  if (!currentUser) {
+    return <UserSelectScreen />;
+  }
+
   return (
     <NavigationContainer>
-      <StatusBar style="auto" />
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: '#f5f5f5' },
@@ -35,5 +42,14 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <UserProvider>
+      <StatusBar style="auto" />
+      <RootNavigator />
+    </UserProvider>
   );
 }

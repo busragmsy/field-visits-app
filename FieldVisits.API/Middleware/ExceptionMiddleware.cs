@@ -22,7 +22,7 @@ public class ExceptionMiddleware
         {
             context.Response.StatusCode = ex switch
             {
-                NotFoundException => StatusCodes.Status404NotFound,
+                FieldVisits.API.Exceptions.NotFoundException => StatusCodes.Status404NotFound,
                 _ => StatusCodes.Status400BadRequest,
             };
             context.Response.ContentType = "application/json";

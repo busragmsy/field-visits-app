@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -11,19 +11,24 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import CalendarIcon from '../components/CalendarIcon';
+import ListOptionsButton from '../components/ListOptionsButton';
 import { useUser } from '../context/UserContext';
 import {
   approveOrRejectVisit,
   getAllVisits,
   getVisitsByUser,
 } from '../services/api';
+import { showError } from '../utils/alert';
 import { formatIsoToTurkish } from '../utils/date';
 import { getStatusConfig } from '../utils/status';
+import { sortVisits } from '../utils/sortVisits';
 
 export default function VisitListScreen({ navigation }) {
   const { currentUser, setCurrentUser } = useUser();
   const isAdmin = currentUser.role === 'Admin';
   const [visits, setVisits] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sortKey, setSortKey] = useState('dateDesc');
 
   const loadVisits = useCallback(async () => {
     try {
@@ -42,20 +47,33 @@ export default function VisitListScreen({ navigation }) {
     }, [loadVisits]),
   );
 
+  const filteredVisits = useMemo(() => {
+    const filtered =
+      statusFilter === 'All'
+        ? visits
+        : visits.filter((visit) => visit.status === statusFilter);
+
+    return sortVisits(filtered, sortKey);
+  }, [visits, statusFilter, sortKey]);
+
   const handleStatusChange = async (id, action) => {
     try {
       await approveOrRejectVisit(id, { adminUserId: currentUser.id, action });
       await loadVisits();
     } catch (error) {
-      if (Platform.OS === 'web') {
-        window.alert(error.message);
-      } else {
-        Alert.alert('Hata', error.message);
-      }
+      showError(error.message);
     }
   };
 
   const showActionMenu = (item) => {
+    if (item.status !== 'Pending') {
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      return;
+    }
+
     Alert.alert('İşlem Seç', '', [
       { text: 'Onayla', onPress: () => handleStatusChange(item.id, 'Approve') },
       { text: 'Reddet', onPress: () => handleStatusChange(item.id, 'Reject') },
@@ -66,6 +84,7 @@ export default function VisitListScreen({ navigation }) {
   const renderItem = ({ item }) => {
     const status = getStatusConfig(item.status);
     const initial = item.customerName?.trim()?.charAt(0)?.toUpperCase() || '?';
+    const canModerate = isAdmin && item.status === 'Pending';
 
     return (
       <View style={styles.card}>
@@ -73,7 +92,7 @@ export default function VisitListScreen({ navigation }) {
           style={styles.cardMain}
           activeOpacity={0.7}
           onPress={() => navigation.navigate('EditVisit', { visit: item })}
-          onLongPress={isAdmin ? () => showActionMenu(item) : undefined}
+          onLongPress={canModerate ? () => showActionMenu(item) : undefined}
         >
           <View style={[styles.avatar, { backgroundColor: status.circle }]}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -101,7 +120,7 @@ export default function VisitListScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        {Platform.OS === 'web' && isAdmin && (
+        {canModerate && (
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionButton, styles.approveButton]}
@@ -152,14 +171,25 @@ export default function VisitListScreen({ navigation }) {
         </View>
       </View>
 
+      <ListOptionsButton
+        statusFilter={statusFilter}
+        sortKey={sortKey}
+        onStatusChange={setStatusFilter}
+        onSortChange={setSortKey}
+      />
+
       <FlatList
-        data={visits}
+        data={filteredVisits}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Henüz ziyaret bulunmuyor.</Text>
+          <Text style={styles.emptyText}>
+            {statusFilter === 'All'
+              ? 'Henüz ziyaret bulunmuyor.'
+              : 'Bu filtreye uygun ziyaret bulunamadı.'}
+          </Text>
         }
       />
     </SafeAreaView>
@@ -225,6 +255,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingTop: 8,
     flexGrow: 1,
   },
   card: {

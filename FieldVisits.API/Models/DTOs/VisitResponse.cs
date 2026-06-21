@@ -17,4 +17,10 @@ public class VisitResponse
     public string Status { get; set; } = string.Empty;
 
     public DateTime? ApprovedAt { get; set; }
+
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
+
+    public string? Address { get; set; }
 }

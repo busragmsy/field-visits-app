@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import DatePickerField from '../components/DatePickerField';
+import LocationField from '../components/LocationField';
 import { useUser } from '../context/UserContext';
 import { createVisit } from '../services/api';
+import { showError } from '../utils/alert';
 
 const NOTE_MAX_LENGTH = 500;
 
@@ -21,6 +22,9 @@ export default function NewVisitScreen({ navigation }) {
   const [customerName, setCustomerName] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [note, setNote] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [address, setAddress] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -41,10 +45,13 @@ export default function NewVisitScreen({ navigation }) {
         customerName: customerName.trim(),
         visitDate,
         note: note || null,
+        latitude,
+        longitude,
+        address: address.trim() || null,
       });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Hata', error.message);
+      showError(error.message);
     } finally {
       setSaving(false);
     }
@@ -88,6 +95,18 @@ export default function NewVisitScreen({ navigation }) {
           value={visitDate}
           onChange={setVisitDate}
           errorText={dateError ? 'Ziyaret tarihi zorunludur.' : null}
+        />
+
+        <Text style={styles.label}>Konum</Text>
+        <LocationField
+          latitude={latitude}
+          longitude={longitude}
+          address={address}
+          onChange={({ latitude: lat, longitude: lng, address: addr }) => {
+            setLatitude(lat);
+            setLongitude(lng);
+            setAddress(addr ?? '');
+          }}
         />
 
         <Text style={styles.label}>Not</Text>

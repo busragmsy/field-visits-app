@@ -20,6 +20,7 @@ export default function DatePickerField({
   onChange,
   disabled = false,
   errorText,
+  restrictPastDates = true,
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const [pastDateWarning, setPastDateWarning] = useState(false);
@@ -53,7 +54,7 @@ export default function DatePickerField({
         <input
           type="date"
           value={value || ''}
-          min={todayIso}
+          min={restrictPastDates ? todayIso : undefined}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           style={{
@@ -109,7 +110,7 @@ export default function DatePickerField({
           value={parseIsoDate(value)}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={getTodayStart()}
+          minimumDate={restrictPastDates ? getTodayStart() : undefined}
           onChange={handleNativeChange}
         />
       )}

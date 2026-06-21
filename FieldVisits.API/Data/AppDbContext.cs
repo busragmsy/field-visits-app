@@ -55,12 +55,23 @@ public class AppDbContext : DbContext
             entity.Property(v => v.Note)
                 .HasMaxLength(500);
 
+            entity.Property(v => v.Latitude);
+            entity.Property(v => v.Longitude);
+
+            entity.Property(v => v.Address)
+                .HasMaxLength(500);
+
             entity.Property(v => v.CreatedDate)
                 .HasDefaultValueSql("now() at time zone 'utc'");
 
             entity.Property(v => v.Status)
                 .HasConversion(new EnumToStringConverter<VisitStatus>())
                 .HasMaxLength(50);
+
+            // Aynı kullanıcı + müşteri + gün için tek ziyaret (Senaryo 1)
+            entity.HasIndex(v => new { v.UserId, v.CustomerName, v.VisitDate })
+                .IsUnique()
+                .HasDatabaseName("IX_Visits_UserId_CustomerName_VisitDate");
 
             // User → Visit relationship with restrict delete
             entity.HasOne(v => v.User)

@@ -1,6 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,59 +9,81 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import ConfirmDialog from '../components/ConfirmDialog';
 import DatePickerField from '../components/DatePickerField';
+import LocationField from '../components/LocationField';
+import SuccessOverlay from '../components/SuccessOverlay';
+import { useUser } from '../context/UserContext';
 import { deleteVisit, updateVisit } from '../services/api';
+import { showError } from '../utils/alert';
 import { formatDateTimeToTurkish } from '../utils/date';
+import { formatCoordinates } from '../utils/location';
 import { getStatusConfig } from '../utils/status';
 
 const NOTE_MAX_LENGTH = 500;
+const SUCCESS_DELAY_MS = 1400;
 
 export default function EditVisitScreen({ route, navigation }) {
   const { visit } = route.params;
+  const { currentUser } = useUser();
+  const isAdmin = currentUser.role === 'Admin';
   const status = getStatusConfig(visit.status);
-  const isLocked = visit.status === 'Approved';
+  const isLocked =
+    visit.status === 'Approved' || (visit.status === 'Rejected' && !isAdmin);
+
+  const statusBannerMessage =
+    visit.status === 'Rejected' && isAdmin
+      ? 'Bu ziyaret reddedildi. Merkez olarak düzenleyebilirsiniz; kayıt tekrar onaya gönderilir.'
+      : status.bannerMessage;
 
   const [customerName, setCustomerName] = useState(visit.customerName);
   const [visitDate, setVisitDate] = useState(visit.visitDate);
   const [note, setNote] = useState(visit.note ?? '');
+  const [latitude, setLatitude] = useState(visit.latitude ?? null);
+  const [longitude, setLongitude] = useState(visit.longitude ?? null);
+  const [address, setAddress] = useState(visit.address ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const nameError = submitted && !customerName.trim();
   const dateError = submitted && !visitDate;
 
-  const handleDelete = async () => {
-    try {
-      await deleteVisit(visit.id);
-      navigation.goBack();
-    } catch (error) {
-      if (Platform.OS === 'web') {
-        window.alert(error.message);
-      } else {
-        Alert.alert('Hata', error.message);
-      }
-    }
+  const handleLocationChange = ({ latitude: lat, longitude: lng, address: addr }) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setAddress(addr ?? '');
   };
 
-  const confirmDelete = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Bu ziyaret silinecek. Emin misiniz?')) {
-        handleDelete();
-      }
+  const handleDelete = async () => {
+    if (deleting) {
       return;
     }
 
-    Alert.alert('Emin misiniz?', 'Bu ziyaret silinecek.', [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Sil', style: 'destructive', onPress: handleDelete },
-    ]);
+    setDeleting(true);
+    try {
+      await deleteVisit(visit.id);
+      setDeleteDialogVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   useLayoutEffect(() => {
+    if (isLocked) {
+      navigation.setOptions({ headerRight: undefined });
+      return;
+    }
+
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
-          onPress={confirmDelete}
+          onPress={() => setDeleteDialogVisible(true)}
           style={styles.headerDelete}
           activeOpacity={0.7}
         >
@@ -70,7 +91,7 @@ export default function EditVisitScreen({ route, navigation }) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, isLocked]);
 
   const handleUpdate = async () => {
     if (isLocked) {
@@ -89,11 +110,18 @@ export default function EditVisitScreen({ route, navigation }) {
         customerName: customerName.trim(),
         visitDate,
         note: note || null,
+        latitude,
+        longitude,
+        address: address.trim() || null,
+        requestedByUserId: currentUser.id,
       });
-      navigation.goBack();
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        navigation.goBack();
+      }, SUCCESS_DELAY_MS);
     } catch (error) {
-      Alert.alert('Hata', error.message);
-    } finally {
+      showError(error.message);
       setSaving(false);
     }
   };
@@ -111,7 +139,7 @@ export default function EditVisitScreen({ route, navigation }) {
       >
         <View style={[styles.statusBanner, { backgroundColor: status.bannerBg }]}>
           <Text style={[styles.statusBannerText, { color: status.bannerText }]}>
-            {status.bannerMessage}
+            {statusBannerMessage}
           </Text>
           <View style={[styles.badge, { backgroundColor: status.badgeBg }]}>
             <Text style={[styles.badgeText, { color: status.badgeText }]}>
@@ -146,7 +174,17 @@ export default function EditVisitScreen({ route, navigation }) {
           value={visitDate}
           onChange={setVisitDate}
           disabled={isLocked}
+          restrictPastDates={false}
           errorText={dateError ? 'Ziyaret tarihi zorunludur.' : null}
+        />
+
+        <Text style={styles.label}>Konum</Text>
+        <LocationField
+          latitude={latitude}
+          longitude={longitude}
+          address={address}
+          disabled={isLocked}
+          onChange={handleLocationChange}
         />
 
         <Text style={styles.label}>Not</Text>
@@ -183,6 +221,22 @@ export default function EditVisitScreen({ route, navigation }) {
             <Text style={styles.infoLabel}>Onay Durumu</Text>
             <Text style={styles.infoValue}>{status.approvalLabel}</Text>
           </View>
+          {formatCoordinates(latitude, longitude) && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>GPS</Text>
+              <Text style={styles.infoValue}>
+                {formatCoordinates(latitude, longitude)}
+              </Text>
+            </View>
+          )}
+          {address?.trim() ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Adres</Text>
+              <Text style={[styles.infoValue, styles.infoValueMultiline]}>
+                {address.trim()}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.buttonRow}>
@@ -213,6 +267,22 @@ export default function EditVisitScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <SuccessOverlay
+        visible={showSuccess}
+        message="Ziyaret başarıyla güncellendi"
+      />
+
+      <ConfirmDialog
+        visible={deleteDialogVisible}
+        title="Ziyareti silmek istediğinize emin misiniz?"
+        message={`"${visit.customerName}" kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz.`}
+        confirmLabel={deleting ? 'Siliniyor...' : 'Evet, Sil'}
+        cancelLabel="Vazgeç"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => !deleting && setDeleteDialogVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -317,6 +387,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#111827',
     fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
+  },
+  infoValueMultiline: {
+    textAlign: 'right',
   },
   badge: {
     borderRadius: 20,

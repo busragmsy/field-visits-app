@@ -27,6 +27,13 @@ public class Visit
 
     public int? ApprovedBy { get; set; }
 
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
+
+    [MaxLength(500)]
+    public string? Address { get; set; }
+
     // Navigation property
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;

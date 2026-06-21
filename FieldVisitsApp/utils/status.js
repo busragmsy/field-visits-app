@@ -27,7 +27,7 @@ export const STATUS_CONFIG = {
     bannerBg: '#FEE2E2',
     bannerText: '#DC2626',
     approvalLabel: 'Reddedildi',
-    bannerMessage: 'Bu ziyaret reddedildi.',
+    bannerMessage: 'Bu ziyaret reddedildi. Düzenlenemez.',
   },
 };
 

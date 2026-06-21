@@ -28,14 +28,21 @@ public class VisitService : IVisitService
 
     public async Task<VisitResponse> CreateVisitAsync(CreateVisitRequest request)
     {
-        ValidateVisitData(request.VisitDate, request.CustomerName, request.Note);
+        var customerName = request.CustomerName.Trim();
+        var address = NormalizeAddress(request.Address);
+        ValidateVisitData(request.VisitDate, customerName, request.Note, address: address);
+        ValidateLocation(request.Latitude, request.Longitude);
+        await EnsureNoDuplicateVisitAsync(request.UserId, customerName, request.VisitDate);
 
         var visit = new Visit
         {
             UserId = request.UserId,
-            CustomerName = request.CustomerName,
+            CustomerName = customerName,
             VisitDate = request.VisitDate,
             Note = request.Note,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            Address = address,
             CreatedDate = DateTime.UtcNow,
             Status = VisitStatus.Pending
         };
@@ -60,11 +67,36 @@ public class VisitService : IVisitService
             throw new Exception("Onaylanmış ziyaret düzenlenemez.");
         }
 
-        ValidateVisitData(request.VisitDate, request.CustomerName, request.Note);
+        if (visit.Status == VisitStatus.Rejected)
+        {
+            if (request.RequestedByUserId is null)
+            {
+                throw new Exception("Reddedilmiş ziyaret yalnızca merkez tarafından düzenlenebilir.");
+            }
 
-        visit.CustomerName = request.CustomerName;
+            var requestedBy = await _context.Users.FindAsync(request.RequestedByUserId.Value);
+            if (requestedBy is null || requestedBy.Role != Role.Admin)
+            {
+                throw new Exception("Reddedilmiş ziyaret yalnızca merkez tarafından düzenlenebilir.");
+            }
+
+            visit.Status = VisitStatus.Pending;
+            visit.ApprovedAt = null;
+            visit.ApprovedBy = null;
+        }
+
+        var customerName = request.CustomerName.Trim();
+        var address = NormalizeAddress(request.Address);
+        ValidateVisitData(request.VisitDate, customerName, request.Note, visit.VisitDate, address);
+        ValidateLocation(request.Latitude, request.Longitude);
+        await EnsureNoDuplicateVisitAsync(visit.UserId, customerName, request.VisitDate, visit.Id);
+
+        visit.CustomerName = customerName;
         visit.VisitDate = request.VisitDate;
         visit.Note = request.Note;
+        visit.Latitude = request.Latitude;
+        visit.Longitude = request.Longitude;
+        visit.Address = address;
 
         await _context.SaveChangesAsync();
 
@@ -127,13 +159,77 @@ public class VisitService : IVisitService
         await _context.SaveChangesAsync();
     }
 
-    private static void ValidateVisitData(DateOnly visitDate, string customerName, string? note)
+    private async Task EnsureNoDuplicateVisitAsync(
+        int userId,
+        string customerName,
+        DateOnly visitDate,
+        int? excludeVisitId = null)
+    {
+        var duplicateExists = await _context.Visits.AnyAsync(v =>
+            v.UserId == userId &&
+            v.CustomerName == customerName &&
+            v.VisitDate == visitDate &&
+            (excludeVisitId == null || v.Id != excludeVisitId));
+
+        if (duplicateExists)
+        {
+            throw new Exception(
+                "Bu müşteri için aynı gün içinde zaten bir ziyaret kaydı bulunmaktadır.");
+        }
+    }
+
+    private static void ValidateLocation(double? latitude, double? longitude)
+    {
+        if (latitude is null && longitude is null)
+        {
+            return;
+        }
+
+        if (latitude is null || longitude is null)
+        {
+            throw new Exception("Enlem ve boylam birlikte gönderilmelidir.");
+        }
+
+        if (latitude < -90 || latitude > 90)
+        {
+            throw new Exception("Enlem değeri -90 ile 90 arasında olmalıdır.");
+        }
+
+        if (longitude < -180 || longitude > 180)
+        {
+            throw new Exception("Boylam değeri -180 ile 180 arasında olmalıdır.");
+        }
+    }
+
+    private static string? NormalizeAddress(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
+
+        return address.Trim();
+    }
+
+    private static void ValidateVisitData(
+        DateOnly visitDate,
+        string customerName,
+        string? note,
+        DateOnly? originalVisitDate = null,
+        string? address = null)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        if (visitDate < today)
+        if (originalVisitDate is null)
         {
-            throw new Exception("Geçmiş tarihli ziyaret oluşturulamaz.");
+            if (visitDate < today)
+            {
+                throw new Exception("Geçmiş tarihli ziyaret oluşturulamaz.");
+            }
+        }
+        else if (visitDate < today && visitDate != originalVisitDate.Value)
+        {
+            throw new Exception("Geçmiş tarihli ziyaret tarihi atanamaz.");
         }
 
         if (string.IsNullOrWhiteSpace(customerName))
@@ -144,6 +240,11 @@ public class VisitService : IVisitService
         if (note is not null && note.Length > 500)
         {
             throw new Exception("Not alanı en fazla 500 karakter olabilir.");
+        }
+
+        if (address is not null && address.Length > 500)
+        {
+            throw new Exception("Adres alanı en fazla 500 karakter olabilir.");
         }
     }
 
@@ -156,6 +257,9 @@ public class VisitService : IVisitService
         Note = visit.Note,
         CreatedDate = visit.CreatedDate,
         Status = visit.Status.ToString(),
-        ApprovedAt = visit.ApprovedAt
+        ApprovedAt = visit.ApprovedAt,
+        Latitude = visit.Latitude,
+        Longitude = visit.Longitude,
+        Address = visit.Address
     };
 }

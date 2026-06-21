@@ -41,6 +41,9 @@ export function createVisit(data) {
       customerName: data.customerName,
       visitDate: data.visitDate,
       note: data.note,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      address: data.address?.trim() || null,
     }),
   });
 }
@@ -52,6 +55,10 @@ export function updateVisit(id, data) {
       customerName: data.customerName,
       visitDate: data.visitDate,
       note: data.note,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      address: data.address?.trim() || null,
+      requestedByUserId: data.requestedByUserId ?? null,
     }),
   });
 }

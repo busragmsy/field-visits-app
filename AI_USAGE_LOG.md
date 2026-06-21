@@ -223,4 +223,52 @@ Claude dört sorguyu tamamladı. Soru 2 için hem `NOT IN` + subquery hem de `LE
 
 ---
 
+### [LOG-04] | 20–21.06.2026 | Cursor (Claude Opus 4.8) | Aşama 4 — React Native / Expo Frontend
+
+**Görev:** Expo (React Native) mobil uygulamasını sıfırdan kurmak; API servis katmanı, navigasyon, ziyaret listeleme/ekleme/düzenleme/silme ekranları, onay-red akışı ve UI/UX tasarımını oluşturmak.
+
+**Prompt 1 (API servis katmanı):**
+FieldVisitsApp/services/api.js oluştur. BASE_URL http://localhost:5000/api. getVisitsByUser, getAllVisits, createVisit, updateVisit, approveOrRejectVisit, getUsers fonksiyonları; fetch ile, response.json() dönsün, hata durumunda throw new Error(data.error).
+
+**Prompt 2 (Navigasyon + 3 ekran):**
+screens/ klasörü oluştur, App.js'i güncelle. @react-navigation/native-stack ile VisitList (default), NewVisit, EditVisit. VisitListScreen: getVisitsByUser(1) + FlatList + "+" buton + useFocusEffect. NewVisitScreen: createVisit + Alert ile hata. EditVisitScreen: route.params.visit ile form + updateVisit.
+
+**Prompt 3 (Form validation + date picker + stil):**
+Form validation (boş customerName/visitDate), @react-native-community/datetimepicker, container/input/buton stil standardı.
+
+**Prompt 4 (NativeWind ile UI revizyonu):**
+NativeWind + Tailwind ile 3 ekranı yeniden tasarla, SafeAreaView/KeyboardAvoidingView, status badge, FAB.
+
+**Prompt 5 (Bundling hatası):**
+"TypeError: Cannot read properties of undefined (reading 'transformFile')" — Web Bundling failed.
+
+**Prompt 6 (Katı UI/UX tasarımı, yalnızca RN bileşenleri):**
+Ekstra kütüphane ekleme, sadece mevcut RN bileşenlerini kullan. VisitList kart tasarımı (44px daire baş harf, status'a göre renk, DD MMMM YYYY tarih, status badge, "+" header), NewVisit/EditVisit form + banner + karakter sayacı, "Approved ise kilitli" kuralı görselleştirme.
+
+**Prompt 7 (Platform uyumlu tarih seçici):**
+Web'de <input type="date">, native'de datetimepicker. minimumDate bugün; validation kuralları.
+
+**Prompt 8 (Silme + onay/red aksiyonları):**
+EditVisitScreen header'a Sil butonu (+ backend DELETE endpoint, DeleteVisitAsync: Approved silinemez / bulunamazsa hata). VisitListScreen'de onLongPress ile Onayla/Reddet menüsü.
+
+**Prompt 9 (Temizlik):** Backend derle + kullanılmayan kodları kaldır.
+
+**Prompt 10–11 (Web hata düzeltmeleri):** Güncelle ekranındaki Sil butonu ve status değiştirme web'de çalışmıyor.
+
+**AI Önerisi:**
+- React Navigation native-stack kurulumu, ortak `request` helper'ı, paylaşılan `DatePickerField` / `CalendarIcon` / `status` yapılandırması ile DRY yapı kuruldu.
+- Bundling hatasının kök nedeni eksik `babel-preset-expo` paketiydi (NativeWind değil) — otonom tespit edilip kuruldu.
+- `Alert.alert`'in butonlu diyaloglarının react-native-web'de çalışmadığı tespit edildi; web'de `window.confirm` / görünür kart butonları, native'de `Alert.alert` ile platform-uyumlu çözüm önerildi.
+- Onaylanmış ziyaret düzenleme/silme kilidi hem UI hem backend katmanında uygulandı.
+
+**Kullandım mı?** Evet (UI revizyonunda yön değiştirildi)
+
+**Gerekçe:**
+- **Kabul ettiklerim:** Servis katmanı, navigasyon, dört CRUD ekranı, form validation, platform-uyumlu tarih seçici ve silme/onay-red akışları gereksinimleri karşıladı.
+- **Değiştirdiklerim/Müdahaleler:** Önce NativeWind (Tailwind) ile tasarım yapıldı; ancak "yalnızca yerleşik RN bileşenleri kullan" yönergesiyle ekranlar `StyleSheet`'e taşındı. Sonrasında kullanılmayan NativeWind/Reanimated yığını (config + 2 bileşen + paketler) temizlendi (bundle 851 → 473 modüle düştü). Web platformu özelinde `Alert.alert` davranışı için ek düzeltmeler yapıldı.
+
+**Sonuç:** Expo web bundle başarılı (473 modül, 0 hata), lint temiz. Backend `DELETE /api/visits/{id}` eklendi ve derlendi. Uygulama listeleme, ekleme, düzenleme, silme ve onay/red işlemlerini hem web hem native'de yapıyor.
+
+---
+
 > **Not:** Bu log, proje boyunca her AI etkileşiminde güncellenecektir.

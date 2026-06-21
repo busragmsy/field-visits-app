@@ -1,4 +1,5 @@
 using FieldVisits.API.Data;
+using FieldVisits.API.Exceptions;
 using FieldVisits.API.Models.DTOs;
 using FieldVisits.API.Models.Entities;
 using FieldVisits.API.Models.Enums;
@@ -51,7 +52,7 @@ public class VisitService : IVisitService
 
         if (visit is null)
         {
-            throw new Exception("Ziyaret bulunamadı.");
+            throw new NotFoundException("Ziyaret bulunamadı.");
         }
 
         if (visit.Status == VisitStatus.Approved)
@@ -85,7 +86,7 @@ public class VisitService : IVisitService
 
         if (visit is null)
         {
-            throw new Exception("Ziyaret bulunamadı.");
+            throw new NotFoundException("Ziyaret bulunamadı.");
         }
 
         if (request.Action == "Approve")
@@ -114,7 +115,7 @@ public class VisitService : IVisitService
 
         if (visit is null)
         {
-            throw new Exception("Ziyaret bulunamadı.");
+            throw new NotFoundException("Ziyaret bulunamadı.");
         }
 
         if (visit.Status == VisitStatus.Approved)

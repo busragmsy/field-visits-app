@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FieldVisits.API.Exceptions;
 
 namespace FieldVisits.API.Middleware;
 
@@ -19,7 +20,11 @@ public class ExceptionMiddleware
         }
         catch (Exception ex)
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.StatusCode = ex switch
+            {
+                NotFoundException => StatusCodes.Status404NotFound,
+                _ => StatusCodes.Status400BadRequest,
+            };
             context.Response.ContentType = "application/json";
 
             var response = JsonSerializer.Serialize(new { error = ex.Message });

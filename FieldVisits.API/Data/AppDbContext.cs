@@ -32,6 +32,17 @@ public class AppDbContext : DbContext
             entity.Property(u => u.Role)
                 .HasConversion(new EnumToStringConverter<Role>())
                 .HasMaxLength(50);
+
+            // Seed data: 1 merkez (Admin) + saha (Field) kullanıcıları.
+            // Frontend USER_ID=1 saha kullanıcısı, onay/red işlemleri Admin ile yapılır.
+            entity.HasData(
+                new User { Id = 1, Name = "Büşra", Email = "busra@test.com", Role = Role.Field },
+                new User { Id = 2, Name = "Admin", Email = "admin@test.com", Role = Role.Admin },
+                new User { Id = 3, Name = "Ayşe Demir", Email = "ayse.demir@test.com", Role = Role.Field },
+                new User { Id = 4, Name = "Mehmet Kaya", Email = "mehmet.kaya@test.com", Role = Role.Field },
+                new User { Id = 5, Name = "Fatma Şahin", Email = "fatma.sahin@test.com", Role = Role.Field },
+                new User { Id = 6, Name = "Ali Çelik", Email = "ali.celik@test.com", Role = Role.Field }
+            );
         });
 
         // ── Visit configuration ─────────────────────────────────────

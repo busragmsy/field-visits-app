@@ -1,0 +1,19 @@
+# ---- .NET ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# ---- Build / publish output ----
+[Dd]ebug/
+[Rr]elease/
+publish/
+
+# ---- Environment ----
+*.env
+appsettings.*.local.json
+
+# ---- OS ----
+.DS_Store
+Thumbs.db

@@ -11,20 +11,20 @@ import {
 } from 'react-native';
 import DatePickerField from '../components/DatePickerField';
 import LocationField from '../components/LocationField';
-import { useUser } from '../context/UserContext';
 import { createVisit } from '../services/api';
 import { showError } from '../utils/alert';
+import { enqueueVisit } from '../utils/offlineQueue';
 
 const NOTE_MAX_LENGTH = 500;
 
 export default function NewVisitScreen({ navigation }) {
-  const { currentUser } = useUser();
   const [customerName, setCustomerName] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [note, setNote] = useState('');
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
   const [address, setAddress] = useState('');
+  const [checkInNow, setCheckInNow] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -39,19 +39,25 @@ export default function NewVisitScreen({ navigation }) {
     }
 
     setSaving(true);
+    const payload = {
+      customerName: customerName.trim(),
+      visitDate,
+      note: note || null,
+      latitude,
+      longitude,
+      address: address.trim() || null,
+      checkInNow,
+    };
+
     try {
-      await createVisit({
-        userId: currentUser.id,
-        customerName: customerName.trim(),
-        visitDate,
-        note: note || null,
-        latitude,
-        longitude,
-        address: address.trim() || null,
-      });
+      await createVisit(payload);
       navigation.goBack();
     } catch (error) {
-      showError(error.message);
+      enqueueVisit(payload);
+      showError(
+        `${error.message}\n\nKayıt offline kuyruğa alındı. Liste ekranından tekrar gönderebilirsiniz.`,
+      );
+      navigation.goBack();
     } finally {
       setSaving(false);
     }
@@ -108,6 +114,21 @@ export default function NewVisitScreen({ navigation }) {
             setAddress(addr ?? '');
           }}
         />
+
+        <TouchableOpacity
+          style={[styles.checkButton, checkInNow && styles.checkButtonActive]}
+          activeOpacity={0.8}
+          onPress={() => setCheckInNow((value) => !value)}
+        >
+          <Text
+            style={[
+              styles.checkButtonText,
+              checkInNow && styles.checkButtonTextActive,
+            ]}
+          >
+            {checkInNow ? 'Check-in yapılacak' : 'Kaydederken check-in yap'}
+          </Text>
+        </TouchableOpacity>
 
         <Text style={styles.label}>Not</Text>
         <View>
@@ -222,6 +243,25 @@ const styles = StyleSheet.create({
   noteBannerText: {
     color: '#D97706',
     fontSize: 13,
+  },
+  checkButton: {
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  checkButtonActive: {
+    backgroundColor: '#DBEAFE',
+  },
+  checkButtonText: {
+    color: '#2563EB',
+    fontWeight: 'bold',
+  },
+  checkButtonTextActive: {
+    color: '#1D4ED8',
   },
   buttonRow: {
     flexDirection: 'row',

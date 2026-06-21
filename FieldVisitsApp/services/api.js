@@ -1,11 +1,37 @@
-const BASE_URL = 'http://localhost:5000/api';
+import { getApiBaseUrl } from '../config/apiConfig';
+
+const BASE_URL = getApiBaseUrl();
+let authToken = null;
+
+export function setAuthToken(token) {
+  authToken = token;
+}
+
+function buildQuery(params = {}) {
+  const entries = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== '',
+  );
+
+  if (entries.length === 0) {
+    return '';
+  }
+
+  const query = new URLSearchParams(entries).toString();
+  return `?${query}`;
+}
 
 async function request(url, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
   const response = await fetch(`${BASE_URL}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   });
 
@@ -16,34 +42,44 @@ async function request(url, options = {}) {
     return null;
   }
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') ?? '';
+  const data = contentType.includes('application/json')
+    ? await response.json()
+    : null;
 
   if (!response.ok) {
-    throw new Error(data.error);
+    throw new Error(data?.error || 'İşlem başarısız oldu.');
   }
 
   return data;
 }
 
-export function getVisitsByUser(userId) {
-  return request(`/visits/user/${userId}`);
+export function login(email, password) {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
 }
 
-export function getAllVisits() {
-  return request('/visits');
+export function getVisitsByUser(userId, params = {}) {
+  return request(`/visits/user/${userId}${buildQuery(params)}`);
+}
+
+export function getAllVisits(params = {}) {
+  return request(`/visits${buildQuery(params)}`);
 }
 
 export function createVisit(data) {
   return request('/visits', {
     method: 'POST',
     body: JSON.stringify({
-      userId: data.userId,
       customerName: data.customerName,
       visitDate: data.visitDate,
       note: data.note,
       latitude: data.latitude ?? null,
       longitude: data.longitude ?? null,
       address: data.address?.trim() || null,
+      checkInNow: data.checkInNow ?? false,
     }),
   });
 }
@@ -58,7 +94,8 @@ export function updateVisit(id, data) {
       latitude: data.latitude ?? null,
       longitude: data.longitude ?? null,
       address: data.address?.trim() || null,
-      requestedByUserId: data.requestedByUserId ?? null,
+      checkInNow: data.checkInNow ?? false,
+      checkOutNow: data.checkOutNow ?? false,
     }),
   });
 }
@@ -67,8 +104,8 @@ export function approveOrRejectVisit(id, data) {
   return request(`/visits/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({
-      adminUserId: data.adminUserId,
       action: data.action,
+      rejectReason: data.rejectReason ?? null,
     }),
   });
 }
@@ -81,4 +118,8 @@ export function deleteVisit(id) {
 
 export function getUsers() {
   return request('/users');
+}
+
+export function getCustomers(search) {
+  return request(`/customers${buildQuery({ search })}`);
 }

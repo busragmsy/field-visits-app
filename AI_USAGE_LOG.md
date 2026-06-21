@@ -271,4 +271,114 @@ EditVisitScreen header'a Sil butonu (+ backend DELETE endpoint, DeleteVisitAsync
 
 ---
 
+### [LOG-05] | 21.06.2026 | Cursor (Claude Opus 4.8, Composer 2.5) | Aşama 5 — Teslim Hazırlığı, Rol Tabanlı Akış ve Bölüm 5 Senaryoları
+
+**Görev:** Teknik değerlendirme eksiklerini kapatmak; seed kullanıcılar, kullanıcı seçimi, 404 yönetimi, Bölüm 5/6 şablonları, duplicate ziyaret ve konum özellikleri, UX iyileştirmeleri, filtre/sıralama ve admin'e özel reddedilmiş ziyaret düzenleme kuralını uygulamak.
+
+**Prompt 1 (PDF kriter kontrolü):**
+Junior Software Developer Teknik Değerlendirme Çalışması PDF'indeki tüm kriterlere göre projeyi incele; eksik, farklı veya yanlış bir şey var mı?
+
+**Prompt 2 (Bölüm 5 şablonu):**
+README'yi proje bitince hazırlayacağım. Bölüm 5 için 3 senaryo halinde, kendi promptlarımı yazacağım boş alanlı bir dosya hazırla.
+
+**Prompt 3 (Bölüm 6 şablonu + öneri):**
+Bölüm 6 için ayrı dosya hazırla; kod incelemesini ben yapacağım ama geliştirdiğimiz projeye dayanarak öneri sun.
+
+**Prompt 4 (Seed kullanıcılar):**
+AppDbContext'e HasData ile seed kullanıcılar ekle ve migration işlemini yap. Case'de istenen formatı göz önünde bulundur.
+
+**Prompt 5 (Kullanıcı seçimi vs giriş):**
+Frontend'in userId=1 sabit gelmesini giriş ekranıyla çözebiliriz. Bu aşamada giriş/kayıt ekranı tasarlamak mantıklı mı?
+
+**Prompt 6 (Plan uygulaması):**
+Ekli planı uygula: UserContext + UserSelectScreen, rol bazlı liste (Admin → tüm ziyaretler + onay/red; Saha → kendi ziyaretleri), NotFoundException → 404, README ve teslim adımları.
+
+**Prompt 7 (Lint düzeltmesi):**
+ExceptionMiddleware.cs'de "Using directive is unnecessary" hatasını düzelt.
+
+**Prompt 8 (Demo veri):**
+Veritabanına kayıt girelim; uygulama dolu görünsün.
+
+**Prompt 9 (Senaryo 1 — Duplicate ziyaret):**
+Bölüm 5 Senaryo 1'i implemente et: aynı kullanıcı + müşteri + gün için duplicate ziyaret önle. Unique constraint migration + service validation.
+
+**Prompt 10 (Senaryo 3 — Konum):**
+Bölüm 5 Senaryo 3'ü implemente et: Backend'e Latitude/Longitude ekle; React Native'de "Konumumu Kullan" butonu olsun.
+
+**Prompt 11 (Derleme / güncelle hataları):**
+Derleme başarısız oluyor. / Güncelle butonu çalışmıyor, düzelt.
+
+**Prompt 12 (UX iyileştirmeleri):**
+Onaylanmış kayıtlarda onayla/reddet butonları görünmesin. Güncelleme başarısında görsel geri bildirim + listeye dön. Status'a göre filtreleme (tümü, bekliyor, onaylandı, reddedildi). Konum: GPS veya manuel adres, ikisi de opsiyonel. Silmede tarayıcı alert'i yerine uygulama içi onay ekranı.
+
+**Prompt 13 (Filtre/sıralama UI):**
+Filtre butonlarındaki tasarım hatalarını düzelt. Tarihe veya alfabetik gibi farklı parametrelere göre sıralama da olsun. Önce tek butonla panel, sonra filtreleme ve sıralama için ayrı butonlar istendi.
+
+**Prompt 14 (Reddedilmiş ziyaret — yalnızca admin):**
+Reddedilen ziyaretler güncelleme kısmından değiştirilebiliyor olsun; admin kısmı için tek böyle olsun (saha kullanıcısı için kilitli kalsın).
+
+**AI Önerisi:**
+- Tam login/auth yerine hafif **kullanıcı seçici** (UserSelectScreen + UserContext) önerildi; değerlendirme kapsamı için yeterli, JWT/şifre karmaşıklığından kaçınıldı.
+- Duplicate engeli için hem DB unique index `(UserId, CustomerName, VisitDate)` hem `EnsureNoDuplicateVisitAsync` servis doğrulaması birlikte uygulandı.
+- Konum için `expo-location` ile GPS; manuel adres için ayrı `Address` alanı ve migration eklendi (Senaryo 3'ün Latitude/Longitude şartının üzerine iş ihtiyacı genişletildi).
+- Güncellemede geçmiş tarih: yalnızca **create**'te tam engel; tarih değişmeden mevcut geçmiş tarih korunabilir (`ValidateVisitData` + `originalVisitDate`).
+- UX için `SuccessOverlay`, `ConfirmDialog`, `ListOptionsButton` (ayrı Filtrele | Sırala panelleri), `utils/sortVisits.js` ve web uyumlu `utils/alert.js` eklendi.
+- Reddedilmiş ziyaret: UI'da saha için kilit; backend'de `RequestedByUserId` ile Admin doğrulaması; admin düzenleyince statü **Pending**'e alınır (yeniden onaya).
+
+**Kullandım mı?** Evet (kısmen yön değiştirildi)
+
+**Gerekçe:**
+- **Kabul ettiklerim:** Seed kullanıcılar, kullanıcı seçimi, 404 ayrımı, duplicate ve konum özellikleri, filtre/sıralama ve admin'e özel reddedilmiş düzenleme kuralı proje gereksinimlerini güçlendirdi.
+- **Değiştirdiklerim/Müdahaleler:** Giriş/kayıt ekranı yerine kullanıcı seçici tercih edildi. Konumda yalnızca koordinat değil opsiyonel manuel adres de eklendi. Filtre/sıralama önce tek panel, kullanıcı geri bildirimiyle iki ayrı butona ayrıldı. Bölüm 5/6 metinleri şablon olarak bırakıldı; prompt ve inceleme içerikleri kullanıcı tarafından doldurulacak. README iskeleti hazırlandı; nihai metin kullanıcıya bırakıldı.
+
+**Sonuç:** Backend migration'ları: `SeedUsers`, `PreventDuplicateVisits`, `AddVisitLocation`, `AddVisitAddress`. Frontend: `UserSelectScreen`, `LocationField`, `ListOptionsButton`, `SuccessOverlay`, `ConfirmDialog`, `sortVisits.js`, `alert.js`. İş kuralları genişletildi (duplicate, konum, güncelleme tarihi, admin reddedilmiş düzenleme). Demo SQL verisi eklendi. Kısmen commit edildi (`seed users`, `user selection`, `README`); konum, filtre/sıralama ve reddedilmiş admin kuralı dahil son geliştirmeler henüz commit edilmedi.
+
+---
+
+### [LOG-06] | 22.06.2026 | Cursor (GPT-5.5) | Aşama 6 — Proje İyileştirme ve Büyütme Planı Uygulaması
+
+**Görev:** Projeyi MVP/demo seviyesinden daha güvenli, test edilebilir ve büyütülebilir hale getirmek; önceden hazırlanan "Proje İyileştirme ve Büyütme Planı" maddelerini sırayla uygulamak.
+
+**Prompt 1 (Proje analizi ve öneri):**
+Bu projeyi iyileştirmek, geliştirmek veya büyütmek için ne yapmamı önerirsin? Projeyi analiz ederek tespit et.
+
+**Prompt 2 (Plan hazırlama):**
+Şimdi bana önerdiklerine göre bir plan listesi hazırla ve sırayla projeyi iyileştirip büyütelim.
+
+**Prompt 3 (Plan uygulaması):**
+Proje İyileştirme ve Büyütme Planı
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+
+To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
+
+**AI Önerisi:**
+- Proje önce güvenlik açısından analiz edildi; kullanıcı seçimi/demo akışının gerçek uygulama için yeterli olmadığı, API tarafında gerçek auth/authorization olmadığı tespit edildi.
+- İlk aşama olarak JWT tabanlı login, rol bazlı `[Authorize]` kullanımı, admin endpoint koruması ve saha kullanıcısının yalnızca kendi ziyaretlerine erişmesi önerildi.
+- `CreateVisitRequest.UserId`, `ApproveVisitRequest.AdminUserId` ve `UpdateVisitRequest.RequestedByUserId` gibi istemciden gelen yetki belirleyici alanlara güvenilmemesi; kullanıcı kimliği ve rolünün token claimlerinden okunması önerildi.
+- İş kurallarının korunması için backend test projesi ve `VisitService` unit testleri önerildi.
+- Genel `Exception` kullanımının yerine `ValidationException`, `ForbiddenException`, `ConflictException`, `UnauthorizedException` gibi özel hata tipleri ve tutarlı JSON hata formatı önerildi.
+- Listeleme büyüdüğünde performans sorunu yaşamamak için server-side pagination, search, status filter ve sort önerildi.
+- `CustomerName` string alanından uzun vadede gerçek `Customer` modeline geçilmesi, ziyaret geçmişi/audit trail, red nedeni, check-in/check-out ve offline kayıt kuyruğu gibi ürünleşme özellikleri önerildi.
+
+**Kullandım mı?** Evet
+
+**Gerekçe:**
+- **Kabul ettiklerim:** JWT auth, rol bazlı authorization, token claimlerinden kullanıcı/rol okuma, admin/saha erişim kuralları, özel exception tipleri, pagination/search/filter/sort, müşteri modeli, red nedeni, status history, check-in/check-out, offline kayıt kuyruğu ve backend test altyapısı uygulandı.
+- **Değiştirdiklerim/Müdahaleler:** Önceki aşamada kullanılan demo kullanıcı seçimi gerçek login ekranına dönüştürüldü; ancak geliştirme kolaylığı için seed hesaplara hızlı giriş butonları bırakıldı. Seed kullanıcılar için ortak demo şifre `123456` belirlendi. Production için JWT key'in secret/env olarak yönetilmesi gerektiği not edildi.
+- **Ortam müdahalesi:** `dotnet restore` sırasında bozuk/sandbox NuGet cache ve eksik DevExpress offline feed kaynaklı hatalar alındı. Restore işlemi proje içi izole `.nuget/packages` klasörüne yönlendirildi; `.nuget/` ve `.buildcheck/` kök `.gitignore` dosyasına eklendi.
+- **Doğrulama müdahalesi:** Çalışan API süreci `bin/Debug/net9.0` dosyalarını kilitlediği için önce ayrı `.buildcheck/api` çıktısına build alındı; sonra eski API süreci kapatılıp migration üretildi ve API tekrar başlatıldı.
+
+**Sonuç:** 
+- Backend'e `AuthController`, `CustomersController`, JWT servisleri (`AuthService`, `TokenService`), claim helper'ları, özel exception tipleri, `Customer` ve `VisitStatusHistory` entity'leri eklendi.
+- `VisitService` token tabanlı erişim kurallarıyla yeniden düzenlendi; duplicate kontrolü 409 Conflict dönecek hale getirildi; red nedeni, status history, check-in/check-out ve müşteri eşleştirme eklendi.
+- API hata formatı `{ error, status, details }` yaklaşımına yaklaştırıldı; model validation hataları için özel response üretildi.
+- Migration oluşturuldu: `SecurityAndGrowthFeatures`; PostgreSQL veritabanına başarıyla uygulandı.
+- Frontend'de `UserSelectScreen` login ekranına dönüştürüldü; `UserContext` token/session saklayacak hale getirildi; `api.js` Authorization header, login, query string ve JSON olmayan hata cevaplarına dayanıklı hale getirildi.
+- `VisitListScreen` server-side search/filter/sort/pagination, admin müşteri ekranı erişimi, red nedeni isteme ve offline kuyruk senkronizasyonu ile genişletildi.
+- `CustomerListScreen` ve `offlineQueue.js` eklendi; `NewVisitScreen` offline kayıt kuyruğu ve check-in seçeneği kazandı; `EditVisitScreen` check-in/check-out ve red nedeni bilgisini gösterir hale geldi.
+- Test projesi `FieldVisits.API.Tests` oluşturuldu; `VisitService` için 4 kritik test yazıldı. Son doğrulamada `dotnet test field-visits-app.sln --no-restore` başarılı oldu: 4/4 test geçti.
+
+---
+
 > **Not:** Bu log, proje boyunca her AI etkileşiminde güncellenecektir.

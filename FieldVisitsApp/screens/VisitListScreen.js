@@ -3,18 +3,20 @@ import {
   Alert,
   FlatList,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import CalendarIcon from '../components/CalendarIcon';
 import ListOptionsButton from '../components/ListOptionsButton';
 import { useUser } from '../context/UserContext';
 import {
   approveOrRejectVisit,
+  createVisit,
   getAllVisits,
   getVisitsByUser,
 } from '../services/api';
@@ -22,47 +24,78 @@ import { showError } from '../utils/alert';
 import { formatIsoToTurkish } from '../utils/date';
 import { getStatusConfig } from '../utils/status';
 import { sortVisits } from '../utils/sortVisits';
+import { getQueuedVisits, removeQueuedVisit } from '../utils/offlineQueue';
 
 export default function VisitListScreen({ navigation }) {
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, logoutUser } = useUser();
   const isAdmin = currentUser.role === 'Admin';
   const [visits, setVisits] = useState([]);
+  const [pageInfo, setPageInfo] = useState({ page: 1, totalPages: 1 });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [search, setSearch] = useState('');
+  const [queuedCount, setQueuedCount] = useState(getQueuedVisits().length);
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortKey, setSortKey] = useState('dateDesc');
 
-  const loadVisits = useCallback(async () => {
+  const loadVisits = useCallback(async (page = 1) => {
     try {
+      const params = {
+        page,
+        pageSize: 20,
+        status: statusFilter === 'All' ? undefined : statusFilter,
+        search: search.trim() || undefined,
+        sort: sortKey,
+      };
       const data = isAdmin
-        ? await getAllVisits()
-        : await getVisitsByUser(currentUser.id);
-      setVisits(data);
+        ? await getAllVisits(params)
+        : await getVisitsByUser(currentUser.id, params);
+
+      setVisits((current) =>
+        page === 1 ? data.items : [...current, ...data.items],
+      );
+      setPageInfo({ page: data.page, totalPages: data.totalPages });
     } catch {
       setVisits([]);
     }
-  }, [isAdmin, currentUser.id]);
+  }, [isAdmin, currentUser.id, search, sortKey, statusFilter]);
 
   useFocusEffect(
     useCallback(() => {
-      loadVisits();
+      loadVisits(1);
     }, [loadVisits]),
   );
 
   const filteredVisits = useMemo(() => {
-    const filtered =
-      statusFilter === 'All'
-        ? visits
-        : visits.filter((visit) => visit.status === statusFilter);
+    return sortVisits(visits, sortKey);
+  }, [visits, sortKey]);
 
-    return sortVisits(filtered, sortKey);
-  }, [visits, statusFilter, sortKey]);
-
-  const handleStatusChange = async (id, action) => {
+  const handleStatusChange = async (id, action, rejectReason = null) => {
     try {
-      await approveOrRejectVisit(id, { adminUserId: currentUser.id, action });
-      await loadVisits();
+      await approveOrRejectVisit(id, { action, rejectReason });
+      await loadVisits(1);
     } catch (error) {
       showError(error.message);
     }
+  };
+
+  const rejectVisit = (item) => {
+    if (Platform.OS === 'web') {
+      const reason = window.prompt('Red nedeni');
+      if (reason?.trim()) {
+        handleStatusChange(item.id, 'Reject', reason.trim());
+      }
+      return;
+    }
+
+    Alert.prompt?.(
+      'Red nedeni',
+      'Ziyaretin neden reddedildiğini yazın.',
+      (reason) => {
+        if (reason?.trim()) {
+          handleStatusChange(item.id, 'Reject', reason.trim());
+        }
+      },
+    ) ?? handleStatusChange(item.id, 'Reject', 'Mobil hızlı red');
   };
 
   const showActionMenu = (item) => {
@@ -76,9 +109,35 @@ export default function VisitListScreen({ navigation }) {
 
     Alert.alert('İşlem Seç', '', [
       { text: 'Onayla', onPress: () => handleStatusChange(item.id, 'Approve') },
-      { text: 'Reddet', onPress: () => handleStatusChange(item.id, 'Reject') },
+      { text: 'Reddet', onPress: () => rejectVisit(item) },
       { text: 'İptal', style: 'cancel' },
     ]);
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || pageInfo.page >= pageInfo.totalPages) {
+      return;
+    }
+
+    setLoadingMore(true);
+    await loadVisits(pageInfo.page + 1);
+    setLoadingMore(false);
+  };
+
+  const syncOfflineQueue = async () => {
+    try {
+      const queuedVisits = getQueuedVisits();
+      for (const item of queuedVisits) {
+        await createVisit(item.payload);
+        removeQueuedVisit(item.id);
+      }
+
+      setQueuedCount(getQueuedVisits().length);
+      await loadVisits(1);
+    } catch (error) {
+      showError(error.message);
+      setQueuedCount(getQueuedVisits().length);
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -132,7 +191,7 @@ export default function VisitListScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.actionButton, styles.rejectButton]}
               activeOpacity={0.8}
-              onPress={() => handleStatusChange(item.id, 'Reject')}
+              onPress={() => rejectVisit(item)}
             >
               <Text style={styles.rejectButtonText}>Reddet</Text>
             </TouchableOpacity>
@@ -154,12 +213,21 @@ export default function VisitListScreen({ navigation }) {
           </Text>
         </View>
         <View style={styles.headerActions}>
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.customersButton}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Customers')}
+            >
+              <Text style={styles.customersButtonText}>Müşteriler</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.switchButton}
             activeOpacity={0.8}
-            onPress={() => setCurrentUser(null)}
+            onPress={logoutUser}
           >
-            <Text style={styles.switchButtonText}>Değiştir</Text>
+            <Text style={styles.switchButtonText}>Çıkış</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addButton}
@@ -178,6 +246,37 @@ export default function VisitListScreen({ navigation }) {
         onSortChange={setSortKey}
       />
 
+      {queuedCount > 0 && (
+        <TouchableOpacity
+          style={styles.offlineBanner}
+          activeOpacity={0.8}
+          onPress={syncOfflineQueue}
+        >
+          <Text style={styles.offlineBannerText}>
+            {queuedCount} offline kayıt bekliyor. Senkronize et.
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Müşteri, adres veya not ara"
+          placeholderTextColor="#9CA3AF"
+          returnKeyType="search"
+          onSubmitEditing={() => loadVisits(1)}
+        />
+        <TouchableOpacity
+          style={styles.searchButton}
+          activeOpacity={0.8}
+          onPress={() => loadVisits(1)}
+        >
+          <Text style={styles.searchButtonText}>Ara</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={filteredVisits}
         keyExtractor={(item) => String(item.id)}
@@ -190,6 +289,20 @@ export default function VisitListScreen({ navigation }) {
               ? 'Henüz ziyaret bulunmuyor.'
               : 'Bu filtreye uygun ziyaret bulunamadı.'}
           </Text>
+        }
+        ListFooterComponent={
+          pageInfo.page < pageInfo.totalPages ? (
+            <TouchableOpacity
+              style={styles.loadMoreButton}
+              activeOpacity={0.8}
+              onPress={loadMore}
+              disabled={loadingMore}
+            >
+              <Text style={styles.loadMoreText}>
+                {loadingMore ? 'Yükleniyor...' : 'Daha Fazla Yükle'}
+              </Text>
+            </TouchableOpacity>
+          ) : null
         }
       />
     </SafeAreaView>
@@ -234,6 +347,18 @@ const styles = StyleSheet.create({
     borderColor: '#2563EB',
     marginRight: 8,
   },
+  customersButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#EDE9FE',
+    marginRight: 8,
+  },
+  customersButtonText: {
+    color: '#6D28D9',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   switchButtonText: {
     color: '#2563EB',
     fontWeight: '600',
@@ -257,6 +382,44 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 8,
     flexGrow: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  offlineBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+  },
+  offlineBannerText: {
+    color: '#92400E',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#111827',
+  },
+  searchButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   card: {
     backgroundColor: '#fff',
@@ -358,5 +521,13 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 48,
     fontSize: 15,
+  },
+  loadMoreButton: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  loadMoreText: {
+    color: '#2563EB',
+    fontWeight: 'bold',
   },
 });

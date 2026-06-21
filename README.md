@@ -69,8 +69,10 @@ Frontend `http://localhost:5000/api` adresine bağlanır (`services/api.js`).
 
 ## Kullanım
 
-1. Açılışta bir **kullanıcı seçilir** (giriş ekranı yerine hafif seçim; seed'li
-   kullanıcılar listelenir).
+1. Açılışta seed kullanıcılarla **giriş yapılır**. Demo şifresi tüm seed
+   kullanıcılar için `123456` değeridir.
+   - Saha: `busra@test.com`
+   - Merkez: `admin@test.com`
 2. **Saha kullanıcısı** seçilirse yalnızca kendi ziyaretleri ("Ziyaretlerim")
    görüntülenir; ziyaret oluşturup düzenleyebilir.
 3. **Merkez (Admin)** seçilirse tüm ziyaretler ("Tüm Ziyaretler") görüntülenir ve

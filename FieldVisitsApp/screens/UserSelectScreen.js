@@ -1,120 +1,104 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  SafeAreaView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getUsers } from '../services/api';
+import { login } from '../services/api';
 import { useUser } from '../context/UserContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const DEMO_ACCOUNTS = [
+  { label: 'Saha Kullanıcısı', email: 'busra@test.com' },
+  { label: 'Merkez Admin', email: 'admin@test.com' },
+];
 
 export default function UserSelectScreen() {
-  const { setCurrentUser } = useUser();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loginUser } = useUser();
+  const [email, setEmail] = useState('busra@test.com');
+  const [password, setPassword] = useState('123456');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadUsers = async () => {
+  const handleLogin = async (nextEmail = email) => {
     setLoading(true);
     setError(null);
+
     try {
-      const data = await getUsers();
-      setUsers(data);
-    } catch {
-      setError('Kullanıcılar yüklenemedi. Sunucu çalışıyor mu?');
+      const response = await login(nextEmail.trim(), password);
+      loginUser(response);
+    } catch (err) {
+      setError(err.message || 'Giriş yapılamadı. Sunucu çalışıyor mu?');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const renderItem = ({ item }) => {
-    const isAdmin = item.role === 'Admin';
-    const initial = item.name?.trim()?.charAt(0)?.toUpperCase() || '?';
-
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.7}
-        onPress={() => setCurrentUser(item)}
-      >
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: isAdmin ? '#7C3AED' : '#2563EB' },
-          ]}
-        >
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
-
-        <View style={styles.cardCenter}>
-          <Text style={styles.name} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={styles.email} numberOfLines={1}>
-            {item.email}
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.roleBadge,
-            { backgroundColor: isAdmin ? '#EDE9FE' : '#DBEAFE' },
-          ]}
-        >
-          <Text
-            style={[
-              styles.roleText,
-              { color: isAdmin ? '#6D28D9' : '#1D4ED8' },
-            ]}
-          >
-            {isAdmin ? 'Merkez' : 'Saha'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerArea}>
         <Text style={styles.title}>Saha Ziyaretleri</Text>
-        <Text style={styles.subtitle}>Devam etmek için bir kullanıcı seçin</Text>
+        <Text style={styles.subtitle}>Devam etmek için giriş yapın</Text>
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563EB" />
-        </View>
-      ) : error ? (
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            activeOpacity={0.8}
-            onPress={loadUsers}
-          >
-            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Kullanıcı bulunamadı.</Text>
-          }
+      <View style={styles.formCard}>
+        <Text style={styles.label}>E-posta</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholder="ornek@test.com"
+          placeholderTextColor="#9CA3AF"
         />
-      )}
+
+        <Text style={styles.label}>Şifre</Text>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Şifre"
+          placeholderTextColor="#9CA3AF"
+        />
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        <TouchableOpacity
+          style={[styles.loginButton, loading && styles.disabled]}
+          activeOpacity={0.8}
+          onPress={() => handleLogin()}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Giriş Yap</Text>
+          )}
+        </TouchableOpacity>
+
+        <Text style={styles.demoTitle}>Demo hesaplar</Text>
+        {DEMO_ACCOUNTS.map((account) => (
+          <TouchableOpacity
+            key={account.email}
+            style={styles.demoButton}
+            activeOpacity={0.8}
+            onPress={() => {
+              setEmail(account.email);
+              handleLogin(account.email);
+            }}
+            disabled={loading}
+          >
+            <Text style={styles.demoButtonText}>
+              {account.label} ({account.email})
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
@@ -139,85 +123,70 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  listContent: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  formCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    padding: 20,
+    margin: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 12,
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  cardCenter: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  name: {
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#111827',
-  },
-  email: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  roleBadge: {
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    marginTop: 48,
-    fontSize: 15,
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 16,
+    fontSize: 13,
+    marginTop: 12,
   },
-  retryButton: {
+  loginButton: {
     backgroundColor: '#2563EB',
     borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 18,
   },
-  retryButtonText: {
+  loginButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 16,
+  },
+  disabled: {
+    opacity: 0.7,
+  },
+  demoTitle: {
+    marginTop: 20,
+    marginBottom: 8,
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  demoButton: {
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  demoButtonText: {
+    color: '#1D4ED8',
+    fontWeight: '600',
   },
 });

@@ -113,7 +113,6 @@ export default function EditVisitScreen({ route, navigation }) {
         latitude,
         longitude,
         address: address.trim() || null,
-        requestedByUserId: currentUser.id,
       });
       setShowSuccess(true);
       setTimeout(() => {
@@ -237,7 +236,80 @@ export default function EditVisitScreen({ route, navigation }) {
               </Text>
             </View>
           ) : null}
+          {visit.rejectReason ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Red Nedeni</Text>
+              <Text style={[styles.infoValue, styles.infoValueMultiline]}>
+                {visit.rejectReason}
+              </Text>
+            </View>
+          ) : null}
+          {visit.checkInAt ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Check-in</Text>
+              <Text style={styles.infoValue}>
+                {formatDateTimeToTurkish(visit.checkInAt)}
+              </Text>
+            </View>
+          ) : null}
+          {visit.checkOutAt ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Check-out</Text>
+              <Text style={styles.infoValue}>
+                {formatDateTimeToTurkish(visit.checkOutAt)}
+              </Text>
+            </View>
+          ) : null}
         </View>
+
+        {!isLocked && (
+          <View style={styles.checkRow}>
+            <TouchableOpacity
+              style={[
+                styles.checkButton,
+                visit.checkInAt && styles.checkButtonDisabled,
+              ]}
+              activeOpacity={0.8}
+              onPress={async () => {
+                await updateVisit(visit.id, {
+                  customerName: customerName.trim(),
+                  visitDate,
+                  note: note || null,
+                  latitude,
+                  longitude,
+                  address: address.trim() || null,
+                  checkInNow: true,
+                });
+                navigation.goBack();
+              }}
+              disabled={Boolean(visit.checkInAt)}
+            >
+              <Text style={styles.checkButtonText}>Check-in</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.checkButton,
+                (!visit.checkInAt || visit.checkOutAt) && styles.checkButtonDisabled,
+              ]}
+              activeOpacity={0.8}
+              onPress={async () => {
+                await updateVisit(visit.id, {
+                  customerName: customerName.trim(),
+                  visitDate,
+                  note: note || null,
+                  latitude,
+                  longitude,
+                  address: address.trim() || null,
+                  checkOutNow: true,
+                });
+                navigation.goBack();
+              }}
+              disabled={!visit.checkInAt || Boolean(visit.checkOutAt)}
+            >
+              <Text style={styles.checkButtonText}>Check-out</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.buttonRow}>
           <TouchableOpacity
@@ -393,6 +465,25 @@ const styles = StyleSheet.create({
   },
   infoValueMultiline: {
     textAlign: 'right',
+  },
+  checkRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  checkButton: {
+    flex: 1,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  checkButtonDisabled: {
+    opacity: 0.45,
+  },
+  checkButtonText: {
+    color: '#1D4ED8',
+    fontWeight: 'bold',
   },
   badge: {
     borderRadius: 20,

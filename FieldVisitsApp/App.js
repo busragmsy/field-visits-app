@@ -1,7 +1,9 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UserProvider, useUser } from './context/UserContext';
+import CustomerListScreen from './screens/CustomerListScreen';
 import EditVisitScreen from './screens/EditVisitScreen';
 import NewVisitScreen from './screens/NewVisitScreen';
 import UserSelectScreen from './screens/UserSelectScreen';
@@ -36,6 +38,11 @@ function RootNavigator() {
           options={{ title: 'Yeni Ziyaret' }}
         />
         <Stack.Screen
+          name="Customers"
+          component={CustomerListScreen}
+          options={{ title: 'Müşteriler' }}
+        />
+        <Stack.Screen
           name="EditVisit"
           component={EditVisitScreen}
           options={{ title: 'Ziyaret Düzenle' }}
@@ -47,9 +54,11 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <StatusBar style="auto" />
-      <RootNavigator />
-    </UserProvider>
+    <SafeAreaProvider>
+      <UserProvider>
+        <StatusBar style="auto" />
+        <RootNavigator />
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }

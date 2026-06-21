@@ -9,6 +9,8 @@
 [Dd]ebug/
 [Rr]elease/
 publish/
+.buildcheck/
+.nuget/
 
 # ---- Environment ----
 *.env

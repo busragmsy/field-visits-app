@@ -16,60 +16,38 @@ public async Task CreateVisit(CreateVisitRequest request)
 }
 ```
 
----
 
 ## Kod İncelemem
 
-<!-- Buraya kendi incelemeni yaz -->
+Bu kod mevcut haliyle production'a alınamaz. Sadece CustomerName request üzerinden atanıyor. VisitDate requestten atanmıyor bu durumda tarih default olur ve geçmiş tarih kaydı oluşturulamayacağı kuralından dolayı hiç çalışmaz. Bununla birlikte alan atanmadığı için burada düzeltilmesi gereken temel yapı tüm alanların atanması olacaktır. Bu kodda doğru olan noktalar EF Core ekleme + SaveChangesAsync kullanımı ve async/await doğru. Ayrıca metot adı da CreateVisit yerine CreateVisitAsync olabilirdi. Burada tutarsızlık önlenirdi. 
 
+1- UserId atanmıyor. Ziyaret hangi kullanıcıya ait belli olmaz; UserId = 0 ile FK ihlali / anlamsız kayıt oluşur.
+2- CreatedDate ve Status = Pending set edilmiyor. İş akışında her yeni ziyaret "Beklemede" başlamalı; bu kod onu atlıyor.
+3- Validation tamamen yok. Sadece geçmiş tarih değil; CustomerName boş/whitespace kontrolü ve Note ≤ 500 karakter sınırı da eksik. Projedeki ValidateVisitData bunları yapıyor.
+4- Dönüş değeri yok (Task). Metot oluşturulan kaydı (özellikle DB'nin ürettiği Id) döndürmüyor. Controller'ın 201 Created dönebilmesi için Task<VisitResponse> gerekli.
+5- Null güvenliği: request veya request.CustomerName null gelebilir, hiç kontrol edilmiyor.
+6- UserId varlık doğrulaması: Verilen kullanıcı DB'de var mı kontrol edilmiyor.
 
+Önerilen yapı: 
 
----
+    '''
+    public async Task<VisitResponse> CreateVisitAsync(CreateVisitRequest request)
+    {
+        ValidateVisitData(request.VisitDate, request.CustomerName, request.Note);
 
-## Öneri / İpuçları (projemize dayalı referans)
+        var visit = new Visit
+        {
+            UserId = request.UserId,
+            CustomerName = request.CustomerName,
+            VisitDate = request.VisitDate,
+            Note = request.Note,
+            CreatedDate = DateTime.UtcNow,
+            Status = VisitStatus.Pending
+        };
 
-> Not: Bu bölüm, kendi incelemeni yazarken yön bulman için projedeki gerçek
-> uygulamayla (`FieldVisits.API/Services/VisitService.cs`) karşılaştırmalı
-> hazırlanmış bir referanstır. Aşağıdaki başlıklar, bizim projede zaten doğru
-> yaptığımız ama bu AI kodunda eksik/yanlış olan noktaları gösterir.
+        _context.Visits.Add(visit);
+        await _context.SaveChangesAsync();
 
-### 1. İş kuralları (validation) tamamen eksik
-Projedeki gereksinimler hiç uygulanmamış. Bizim `VisitService.CreateVisitAsync`
-içinde `ValidateVisitData` ile yapılan kontroller burada yok:
-- Geçmiş tarihli ziyaret engeli (`VisitDate < bugün`) yok.
-- `CustomerName` boş/whitespace kontrolü yok.
-- `Note` için 500 karakter sınırı kontrolü yok.
-
-### 2. Alanların büyük kısmı atanmıyor (eksik/bozuk kayıt)
-`request`'ten yalnızca `CustomerName` aktarılıyor. Diğer kritik alanlar boş kalıyor:
-- `UserId` atanmıyor -> ziyaret hangi kullanıcıya ait belli değil ve FK ihlali
-  (ya da userId=0) oluşur.
-- `VisitDate` atanmıyor -> varsayılan/yanlış tarih.
-- `Note` atanmıyor.
-- `CreatedDate` ve `Status = Pending` set edilmiyor (bizim serviste set ediliyor).
-
-### 3. Kullanıcı (UserId) doğrulaması yok
-Verilen `UserId` veritabanında var mı kontrol edilmiyor. Olmayan bir kullanıcı için
-ziyaret oluşturma denemesi anlamsız FK hatasına yol açar; anlamlı bir mesaj dönmeli.
-
-### 4. Hata yönetimi ve anlamlı mesaj yok
-PDF "hatalı isteklerde anlamlı hata mesajları dönülmelidir" diyor. Bu kod hiçbir
-doğrulama yapmadığı için anlamlı hata üretmez; bizim projede bu, exception'lar +
-`ExceptionMiddleware` ile `{ "error": "..." }` formatında çözülüyor.
-
-### 5. Dönüş değeri yok (`Task`)
-Metot oluşturulan ziyareti geri döndürmüyor. Bizim `CreateVisitAsync`
-`Task<VisitResponse>` döndürüp oluşturulan kaydı (Id dahil) çağırana veriyor.
-Controller tarafında `201 Created` dönebilmek için bu gereklidir.
-
-### 6. Entity'nin doğrudan kullanılması / katman ihlali
-`request` -> `Visit` eşlemesi var ama dönüşte de entity'nin sızmaması için
-DTO (`VisitResponse`) kullanımı tercih edilmeli (bizim projede `MapToResponse`).
-
-### 7. Null/girdi güvenliği
-`request` veya `request.CustomerName` null gelebilir; hiç kontrol edilmiyor.
-
-### Özet
-Bu kod yalnızca "ekle ve kaydet" yapıyor; projenin iş kurallarının, alan
-atamalarının, doğrulamaların, hata yönetiminin ve katman ayrımının tamamını
-atlıyor. Doğru hali, projedeki `VisitService.CreateVisitAsync` metodudur.
+        return MapToResponse(visit);
+    }
+    '''

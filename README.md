@@ -117,8 +117,8 @@ PostgreSQL sorguları [sql/queries.sql](sql/queries.sql) dosyasındadır:
 # AI Usage Report
 
 > Tüm AI etkileşimlerinin ayrıntılı, zaman damgalı kaydı [AI_USAGE_LOG.md](AI_USAGE_LOG.md)
-> dosyasındadır (prompt'ların tam metni, AI önerileri ve gerekçeler dahil). Aşağıdaki
-> bölüm bu kaydın özetidir.
+> dosyasındadır (bazı prompt'ların tam metni, AI önerileri ve gerekçeler dahil). Aşağıdaki
+> bölüm bu kaydın özeti niteliğindedir.
 
 ## Hangi yapay zeka araçlarını kullandınız?
 
@@ -126,22 +126,27 @@ PostgreSQL sorguları [sql/queries.sql](sql/queries.sql) dosyasındadır:
 - **Cursor (Claude Sonnet / Composer)** — Service, controller, DTO ve middleware (Aşama 2)
 - **Claude (chat)** — PostgreSQL sorguları (Aşama 3)
 - **Cursor (Claude Opus)** — React Native / Expo frontend, seed ve kullanıcı seçimi (Aşama 4)
+- **Cursor (Claude Opus / Composer)** — Teslim kriter kontrolü, Bölüm 5/6 şablonları, duplicate ziyaret, konum, filtre/sıralama ve UX iyileştirmeleri (Aşama 5)
+- **Cursor (GPT-5.5)** — Proje iyileştirme planı, JWT auth, test altyapısı, müşteri modeli, pagination, offline queue ve README/log güncellemeleri (Aşama 6)
+- **Gemini** — Proje kapsamını büyütme ve fikir alma aşamasında alternatif öneriler için kullanıldı.
 
 ## En faydalı bulduğum 5 prompt
 
-1. **.NET 9 + PostgreSQL iskelet kurulumu** — Klasör yapısı, entity'ler (enum'ların
-   string saklanması, `DeleteBehavior.Restrict`), `AppDbContext`, `Program.cs` ve
-   `docker-compose.yml` tek seferde net biçimde tarif edildi. (LOG-01)
-2. **VisitService iş kuralları** — Her metot için iş kuralları (geçmiş tarih, boş
-   `CustomerName`, 500 karakter `Note`, onaylanmış ziyaretin kilitlenmesi) madde
-   madde verildiği için doğru üretildi. (LOG-02)
-3. **PostgreSQL sorguları** — 4 raporlama sorgusu; alternatif yaklaşımlar ve
-   performans notlarıyla birlikte. (LOG-03)
-4. **Katı UI/UX, yalnızca yerleşik RN bileşenleri** — Ekstra kütüphane olmadan kart
-   tasarımı, status rozetleri ve "onaylanmış ise kilitli" kuralının görselleştirmesi.
-   (LOG-04, Prompt 6)
-5. **Platforma uyumlu tarih seçici** — Web'de `<input type="date">`, native'de
-   `datetimepicker`; `minimumDate` ve validation kurallarıyla. (LOG-04, Prompt 7)
+1. **.NET 9 + PostgreSQL iskelet kurulumu** — Entity, enum, `AppDbContext`,
+   `Program.cs`, CORS, Swagger ve `docker-compose.yml` aynı prompt içinde net
+   tarif edildiği için backend temeli doğru kuruldu. (LOG-01)
+2. **VisitService iş kuralları ve controller katmanı** — Create/update/approve
+   kuralları, DTO'lar ve endpointler maddeler halinde verildiği için iş mantığı
+   servis katmanında toplandı. (LOG-02)
+3. **React Native UI/UX revizyonu** — Yalnızca yerleşik React Native bileşenleriyle
+   kart tasarımı, status rozetleri, form validation, success overlay ve web uyumlu
+   onay akışları geliştirildi. (LOG-04)
+4. **Duplicate ziyaret ve konum senaryoları** — Aynı kullanıcı + müşteri + gün için
+   unique constraint/service validation; ayrıca GPS + manuel adres desteği eklendi.
+   (LOG-05)
+5. **Proje iyileştirme ve büyütme planı** — Proje analiz edilerek JWT auth, rol bazlı
+   yetkilendirme, test altyapısı, özel hata modeli, pagination, müşteri modeli ve
+   offline queue aşamalı şekilde uygulandı. (LOG-06)
 
 ## Yapay zekanın önerdiği ancak kullanmadığım çözümler
 
@@ -152,9 +157,12 @@ PostgreSQL sorguları [sql/queries.sql](sql/queries.sql) dosyasındadır:
 - **NativeWind / Tailwind yığını:** UI önce NativeWind ile yapıldı; ancak "yalnızca
   yerleşik RN bileşenleri kullan" yönergesiyle `StyleSheet`'e taşındı ve ilgili
   paketler/config temizlendi (bundle 851 → ~473 modül).
-- **Tam kimlik doğrulama (login/register + JWT):** Hardcoded `USER_ID` için AI/öneri
-  düzeyinde değerlendirildi; case kapsamı dışı ve maliyetli olduğu için bunun yerine
-  hafif, rol bazlı **kullanıcı seçimi** uygulandı.
+- **Tam register/parola yönetimi akışı:** JWT login sonradan eklendi; ancak kullanıcı
+  kayıt, parola sıfırlama ve parola değiştirme akışları case kapsamını büyüteceği için
+  eklenmedi. Seed kullanıcılar demo şifresiyle kullanıldı.
+- **Harita ve fotoğraf ekleme:** Proje büyütme planında önerildi; ancak temel güvenlik,
+  test, müşteri modeli, pagination ve offline kayıt kuyruğu daha öncelikli olduğu için
+  bu özellikler sonraki geliştirme aşamasına bırakıldı.
 
 ## Yapay zekanın yanlış yönlendirdiği noktalar
 
@@ -164,15 +172,41 @@ PostgreSQL sorguları [sql/queries.sql](sql/queries.sql) dosyasındadır:
 - **`Alert.alert` davranışı:** AI başta tüm platformlarda `Alert.alert` butonlu
   diyalogları önerdi; bunların react-native-web'de çalışmadığı tespit edilip web'de
   `window.confirm` / görünür kart butonları ile platform-uyumlu çözüme geçildi.
+- **NuGet kaynak problemi:** Restore/build hatalarında sorun bazen paket versiyonu gibi
+  yorumlandı; asıl sebep yerel makinedeki eski DevExpress offline feed'i ve bozuk/sandbox
+  NuGet cache'ti. Proje içi `nuget.config` ve izole `.nuget/packages` kullanımıyla çözüldü.
 
 ## Hangi bölümleri yapay zeka kullanmadan geliştirdim?
 
 Kod üretiminde AI yoğun kullanıldı; ancak aşağıdaki karar ve incelemeler manuel yapıldı:
-- **İş mantığı yorumları:** SQL Soru 4'te "onaylanmamış = Pending" yorumu ve join/filtre
-  tercihleri.
-- **Mimari kararlar:** Tam auth yerine rol bazlı kullanıcı seçimi; seed stratejisi ve
-  veritabanının temiz yeniden kurulması.
-- **Ortam müdahalesi:** Global NuGet çakışması (NU1301) için projeye özel `nuget.config`
-  kuralının belirlenmesi.
-- **Gözden geçirme/temizlik:** Üretilen kodun kabul/ret kararları ve kullanılmayan
-  bağımlılıkların temizlenmesi.
+- **Docker bağlantısı ve uygulamanın ayağa kaldırılması:** PostgreSQL container'ının
+  çalıştırılması, migration'ların uygulanması, backend/frontend'in yerelde test edilmesi
+  ve ortam değişkenlerinin ayarlanması.
+- **GitHub entegrasyonu:** Repository düzeni, dosya takibi, commit/branch kararları ve
+  teslim için proje çıktılarının gözden geçirilmesi.
+- **Bölüm 5 ve Bölüm 6 dokümanları:** `docs/bolum5-ai-iletisim.md` ve
+  `docs/bolum6-kod-incelemesi.md` içerikleri manuel olarak düzenlendi; AI yalnızca
+  şablon/fikir desteği sağladı.
+- **İş mantığı kararları:** SQL Soru 4'te "onaylanmamış = Pending" yorumu, duplicate
+  ziyaret kuralının kapsamı, konumun zorunlu tutulmaması ve manuel adres eklenmesi.
+- **Mimari/ürün kararları:** Önce kullanıcı seçimiyle MVP akışını kurma, sonrasında JWT
+  auth'a geçme; seed stratejisi, demo kullanıcı/şifre seçimi, müşteri modelinin aşamalı
+  eklenmesi ve offline queue'nun ilk sürüm kapsamı.
+- **Gözden geçirme ve kabul/ret kararları:** Üretilen kodların test edilmesi, kullanılmayan
+  bağımlılıkların temizlenmesi, AI önerilerinin proje kapsamına göre kabul edilmesi veya
+  sonraki aşamaya bırakılması.
+
+## Bölüm 5 ve Bölüm 6
+
+- **Bölüm 5 – AI ile İletişim Becerisi:** [docs/bolum5-ai-iletisim.md](docs/bolum5-ai-iletisim.md)
+- **Bölüm 6 – AI Kod İncelemesi:** [docs/bolum6-kod-incelemesi.md](docs/bolum6-kod-incelemesi.md)
+
+## AI Chat Geçmişi Linkleri
+
+Aşağıdaki dosyalarda seçilmiş AI chat geçmişleri ve içerikleri yer almaktadır:
+
+- [Controller implementasyonu chat geçmişi](docs/ai-chat-linkleri/cursor_visits_and_users_controller_impl.md)
+- [Proje kriter değerlendirmesi chat geçmişi](docs/ai-chat-linkleri/cursor_project_criteria_evaluation.md)
+- [Proje iyileştirme önerileri chat geçmişi](docs/ai-chat-linkleri/cursor_proje_iyile_tirme_nerileri.md)
+
+
